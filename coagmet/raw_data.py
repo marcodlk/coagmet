@@ -5,7 +5,6 @@ import requests
 import pandas as pd
 import numpy as np
 
-from .base import CoagmetData
 from .exceptions import BadRequestError
 
 daily_data_fmt = '''
@@ -116,7 +115,7 @@ hourly_columns_etr = [
     'asce_etr_hourly'
 ]
 
-min5_data_fmt = '''
+fivemin_data_fmt = '''
 Datetime (in the format YYYY-MM-DD HH:MM:SS)
 Battery Voltage
 Mean Temperature (Celsius)
@@ -134,7 +133,7 @@ Wind Gust Time (minutes into day)
 Wind Gust Direction (Degrees)
 '''.strip()
 
-min5_columns = [
+fivemin_columns = [
     'datetime',
     'battery_voltage',
     'mean_temp',
@@ -152,10 +151,10 @@ min5_columns = [
     'wind_gust_dir',
 ]
 
-min5_columns_etr = []
+fivemin_columns_etr = []
 
 def build_url_raw(station, start_date=None, end_date=None, 
-                  daily=True, hourly=False, min5=False, 
+                  daily=True, hourly=False, fivemin=False, 
                   qc=True, etr=True):
     url = 'https://coagmet.colostate.edu/rawdata_results.php?'
     url += 'station=' + station
@@ -167,7 +166,7 @@ def build_url_raw(station, start_date=None, end_date=None,
         url += '&daily=1'
     if hourly:
         url += '&hourly=1'
-    if min5:
+    if fivemin:
         url += '&5min=1'
     if qc:
         url += '&qc=1'
@@ -179,25 +178,25 @@ def get_raw(station, start_date=None, end_date=None,
             freq='daily', qc=True, etr=True):
     
     if freq == 'daily':
-        daily, hourly, min5 = True, False, False
+        daily, hourly, fivemin = True, False, False
         columns = ['station'] + daily_columns
         if etr:
             columns += daily_columns_etr
     elif freq == 'hourly':
-        daily, hourly, min5 = False, True, False
+        daily, hourly, fivemin = False, True, False
         columns = ['station'] + hourly_columns
         if etr:
             columns += hourly_columns_etr
     elif freq == '5min':
-        daily, hourly, min5 = False, False, True
-        columns = ['station'] + min5_columns
+        daily, hourly, fivemin = False, False, True
+        columns = ['station'] + fivemin_columns
         if etr:
-            columns += min5_columns_etr
+            columns += fivemin_columns_etr
     else:
         raise ValueError('freq must be one of: [daily, hourly, 5min]'
                          ' but received: {}'.format(freq))
     url = build_url_raw(station, start_date, end_date,
-                        daily, hourly, min5,
+                        daily, hourly, fivemin,
                         qc, etr)
     csv = requests.get(url).text
         
@@ -209,20 +208,54 @@ def get_raw(station, start_date=None, end_date=None,
     return df
 
     
-class RawData(CoagmetData):
-        
-    def request(self, station, start_date=None, end_date=None, 
-                freq='daily', qc=True, etr=True):
-        self.df = get_raw(station, start_date, end_date,
-                          freq, qc, etr)
-        if 'year' in self.df:
-            self.df.drop(['year'], axis=1, inplace=True)
-        return self
-        
-    def get_numerical(self):
-        drop_columns = ['station'] + [col for col in self.df if 'time' in col]
-        return self.df.drop(drop_columns, axis=1)
+class RawData:
     
-    def get_temporal(self):
-        time_columns = [col for col in self.df if 'time' in col]
-        return self.df[time_columns]
+    def __init__(self,
+                 station,
+                 freq='daily', 
+                 qc=True, 
+                 etr=True,
+                 columns=None,
+                 ignore=['station', 'year'],
+                 ignore_temporal=True):
+        self.station = station
+        self.freq = freq
+        self.qc = qc
+        self.etr = etr
+        self.columns = columns
+        self.ignore = ignore
+        self.ignore_temporal = ignore_temporal
+        
+    def get(self, start_date, end_date=None):
+        if end_date is None:
+            end_date = start_date
+        df = get_raw(self.station, start_date, end_date,
+                     self.freq, self.qc, self.etr)
+        if self.columns:
+            return df[self.columns]
+        else:
+            drop_columns = []
+            if self.ignore:
+                for col in self.ignore:
+                    if col not in df:
+                        raise UserWarning('Ignoring a column that already'
+                                          ' doesn\'t exist: {}'.format(col))
+                    else:
+                        drop_columns.append(col)
+            if self.ignore_temporal:
+                drop_columns += [col for col in df if 'time' in col]
+            df.drop(drop_columns, axis=1, inplace=True)
+            return df
+        
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            return self.get(key)
+        elif isinstance(key, slice):
+            df = self.get(key.start, key.stop)
+            if key.step is not None:
+                df = df[::key.step]
+            return df
+        else:
+            raise ValueError()
+
+__all__ = ['RawData']
