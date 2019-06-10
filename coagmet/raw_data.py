@@ -1,6 +1,7 @@
 from datetime import datetime
 from io import StringIO
 import requests
+# import warnings
 
 import pandas as pd
 import numpy as np
@@ -238,8 +239,9 @@ class RawData:
             if self.ignore:
                 for col in self.ignore:
                     if col not in df:
-                        raise UserWarning('Ignoring a column that already'
-                                          ' doesn\'t exist: {}'.format(col))
+                        # warnings.warn('Ignoring a column that already'
+                        #               ' doesn\'t exist: {}'.format(col))
+                        pass
                     else:
                         drop_columns.append(col)
             if self.ignore_temporal:
