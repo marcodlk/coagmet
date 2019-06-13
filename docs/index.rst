@@ -1,5 +1,5 @@
 Welcome to CoAgMet Python Interface's documentation!
-======================================
+====================================================
 
 .. toctree::
    :maxdepth: 2

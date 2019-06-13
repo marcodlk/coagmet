@@ -26,7 +26,9 @@ CoAgMET Python Interface
 Features
 --------
 
-* TODO
+* Raw Data Access
+* Stations Index
+
 
 Credits
 -------
