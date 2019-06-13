@@ -20,7 +20,11 @@ CoAgMET Python Interface
 
 
 * Free software: MIT license
-* Documentation: https://coagmet.readthedocs.io.
+* Documentation: https://coagmet.readthedocs.io. (Not currently available)
+
+To view documentation locally, run::
+    
+    make docs
 
 
 Features
