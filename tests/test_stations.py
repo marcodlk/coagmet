@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Tests for `stations` module."""
+"""Tests for :mod:`~coagmet.stations` module."""
 
 import pytest
 
 import pandas as pd
 
-from coagmet.stations import get_station, find_nearest_station
+from coagmet.stations import Stations 
 
 
 def test_get_station():
-    station = get_station('HOT01')
+    station_id = 'HOT01'
+    stations = Stations()
+    stations_df = stations.get()
+    station = stations.get_station(station_id)
     assert isinstance(station, pd.Series)
     expect_fields = ['Station Name',
                      'Location',
@@ -23,3 +26,4 @@ def test_get_station():
                      'Irrigation Type']
     actual_fields = station.index.values.tolist()
     assert expect_fields == actual_fields
+    assert stations_df.loc[station_id].all() == station.all()

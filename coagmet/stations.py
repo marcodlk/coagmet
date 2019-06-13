@@ -21,8 +21,6 @@ def get_stations():
             output_row.append(column.text)
         output_rows.append(output_row)
 
-    output_rows[:10]
-
     values = []
     station_ids = []
     for i, row in enumerate(output_rows):
@@ -64,29 +62,40 @@ def get_stations():
     
     return df
 
-stations = get_stations()
 
-def refresh_stations():
-    global stations
-    stations = get_stations()
+class Stations:
 
-def find_nearest_station(lat, lon):
-    global stations
-    location = np.array([lat, lon])
-    locations = np.array(list(zip(stations['Latitude'], 
-                                  stations['Longitude'])))
-    dists = np.sum((locations - location) ** 2, axis=1)
-    return stations.index[np.argmin(dists)]
+    def __init__(self):
+        self.df = None
+        
+    def get(self):
+        self.df = get_stations()
+        return self.df
 
-def get_station(id):
-    global stations
-    if isinstance(id, tuple):
-        lon, lat = id[0], id[1]
-        id = find_nearest_station(lon, lat)
-    if not isinstance(id, str):
-        raise ValueError('`id` must be either <str> or <tuple>,'
-                         ' got: {}'.format(id))
-    return stations.loc[id]
+    def find_nearest_stations(self, lat, lon, n=3):
+        if self.df is None:
+            self.get()
+        location = np.array([lat, lon])
+        locations = np.array(list(zip(self.df['Latitude'], 
+                                      self.df['Longitude'])))
+        dists = np.sum((locations - location) ** 2, axis=1)
+        return self.df.index[np.argsort(dists)[:n]]
 
-__all__ = ['get_stations', 'refresh_stations',
-           'find_nearest_station', 'get_station']
+    def find_nearest_station(self, lat, lon):
+        if self.df is None:
+            self.get()
+        return self.find_nearest_stations(lat, lon, n=1)[0]
+
+    def get_station(self, station_id):
+        if self.df is None:
+            self.get()
+        if isinstance(station_id, tuple):
+            lon, lat = station_id[0], station_id[1]
+            station_id = self.find_nearest_station(lon, lat)
+        if not isinstance(station_id, str):
+            raise ValueError('`station_id` must be either <str> or <tuple>,'
+                            ' got: {}'.format(station_id))
+        return self.df.loc[station_id]
+
+
+__all__ = ['Stations']
